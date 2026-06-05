@@ -59,7 +59,7 @@ pub enum AddressingMode {
     NoneAddressing, // Without operating
 }
 
-trait Mem {
+pub trait Mem {
     fn mem_read(&self, addr: u16) -> u8;
 
     fn mem_write(&mut self, addr: u16, data: u8);
@@ -138,7 +138,7 @@ impl CPU {
             AddressingMode::Indirect_X => {
                 let base = self.mem_read(self.program_counter);
 
-                let ptr: u8 = (base).wrapping_add(self.register_x); // // Sum on zero page
+                let ptr: u8 = base.wrapping_add(self.register_x); // // Sum on zero page
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
                 (hi as u16) << 8 | (lo as u16) // // Builds the final address
@@ -147,7 +147,7 @@ impl CPU {
                 let base = self.mem_read(self.program_counter);
 
                 let lo = self.mem_read(base as u16);
-                let hi = self.mem_read((base).wrapping_add(1) as u16);
+                let hi = self.mem_read(base.wrapping_add(1) as u16);
                 let deref_base = (hi as u16) << 8 | (lo as u16);
                 deref_base.wrapping_add(self.register_y as u16)
             }
@@ -245,8 +245,8 @@ impl CPU {
     // 0xFFFC is the reset vector: a hardwired address on the 6502 where
     // the processor reads the start address at boot time.
     pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_u16(0xFFFC, 0x8000);
+        self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]); // The game expects that the execution code would be located right after the output region (Snake Game)
+        self.mem_write_u16(0xFFFC, 0x0600);
     }
 
     pub fn reset(&mut self) {
@@ -534,6 +534,13 @@ impl CPU {
     }
 
     pub fn run(&mut self) {
+        self.run_with_callback(|_| {});
+    }
+
+    pub fn run_with_callback<F>(&mut self, mut callback: F)
+    where
+        F: FnMut(&mut CPU),
+    {
         let opcodes: &HashMap<u8, &'static opcodes::OpCode> = &opcodes::OPCODES_MAP;
 
         loop {
@@ -744,7 +751,7 @@ impl CPU {
 
                 // NOP
                 0xea => {
-                    //do nothing
+                    //Do nothing
                 }
 
                 // TAY
@@ -784,6 +791,9 @@ impl CPU {
             if program_counter_state == self.program_counter {
                 self.program_counter += (opcode.len - 1) as u16;
             }
+
+            // Provide a callback that will be executed before every opcode interpretation cycle
+            callback(self);
         }
     }
 }
