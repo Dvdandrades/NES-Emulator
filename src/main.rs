@@ -1,6 +1,8 @@
+pub mod bus;
 pub mod cpu;
 pub mod opcodes;
 
+use bus::Bus;
 use cpu::CPU;
 use cpu::Mem;
 use rand::RngExt;
@@ -127,9 +129,11 @@ fn main() {
     ];
 
     // Load the game
-    let mut cpu = CPU::new();
+    let bus = Bus::new();
+    let mut cpu = CPU::new(bus);
     cpu.load(game_code);
     cpu.reset();
+    cpu.program_counter = 0x0600;
 
     let mut screen_state = [0_u8; 32 * 3 * 32]; // Texture representation
     let mut rng = rand::rng();
