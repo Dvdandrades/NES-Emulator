@@ -271,6 +271,163 @@ lazy_static! {
         OpCode::new(0x08, "PHP", 1, 3, AddressingMode::NoneAddressing),
         // Pull Processor Status from Stack
         OpCode::new(0x28, "PLP", 1, 4, AddressingMode::NoneAddressing),
+
+        // Unofficial
+        //Equivalent to DEC value then CMP value, except supporting more addressing modes.
+        // LDA #$FF followed by DCP can be used to check if the decrement underflows, which is useful for multi-byte decrements.
+        OpCode::new(0xc7, "*DCP", 2, 5, AddressingMode::ZeroPage),
+        OpCode::new(0xd7, "*DCP", 2, 6, AddressingMode::ZeroPage_X),
+        OpCode::new(0xCF, "*DCP", 3, 6, AddressingMode::Absolute),
+        OpCode::new(0xDF, "*DCP", 3, 7, AddressingMode::Absolute_X),
+        OpCode::new(0xdb, "*DCP", 3, 7, AddressingMode::Absolute_Y),
+        OpCode::new(0xd3, "*DCP", 2, 8, AddressingMode::Indirect_Y),
+        OpCode::new(0xc3, "*DCP", 2, 8, AddressingMode::Indirect_X),
+
+        // Equivalent to ROL value then AND value, except supporting more addressing modes.
+        // LDA #$FF followed by RLA is an efficient way to rotate a variable while also loading it in A.
+        OpCode::new(0x27, "*RLA", 2, 5, AddressingMode::ZeroPage),
+        OpCode::new(0x37, "*RLA", 2, 6, AddressingMode::ZeroPage_X),
+        OpCode::new(0x2F, "*RLA", 3, 6, AddressingMode::Absolute),
+        OpCode::new(0x3F, "*RLA", 3, 7, AddressingMode::Absolute_X),
+        OpCode::new(0x3b, "*RLA", 3, 7, AddressingMode::Absolute_Y),
+        OpCode::new(0x33, "*RLA", 2, 8, AddressingMode::Indirect_Y),
+        OpCode::new(0x23, "*RLA", 2, 8, AddressingMode::Indirect_X),
+
+        // Equivalent to ASL value then ORA value, except supporting more addressing modes.
+        // LDA #0 followed by SLO is an efficient way to shift a variable while also loading it in A.
+        OpCode::new(0x07, "*SLO", 2, 5, AddressingMode::ZeroPage),
+        OpCode::new(0x17, "*SLO", 2, 6, AddressingMode::ZeroPage_X),
+        OpCode::new(0x0F, "*SLO", 3, 6, AddressingMode::Absolute),
+        OpCode::new(0x1f, "*SLO", 3, 7, AddressingMode::Absolute_X),
+        OpCode::new(0x1b, "*SLO", 3, 7, AddressingMode::Absolute_Y),
+        OpCode::new(0x03, "*SLO", 2, 8, AddressingMode::Indirect_X),
+        OpCode::new(0x13, "*SLO", 2, 8, AddressingMode::Indirect_Y),
+
+        // Equivalent to LSR value then EOR value, except supporting more addressing modes.
+        // LDA #0 followed by SRE is an efficient way to shift a variable while also loading it in A.
+        OpCode::new(0x47, "*SRE", 2, 5, AddressingMode::ZeroPage),
+        OpCode::new(0x57, "*SRE", 2, 6, AddressingMode::ZeroPage_X),
+        OpCode::new(0x4F, "*SRE", 3, 6, AddressingMode::Absolute),
+        OpCode::new(0x5f, "*SRE", 3, 7, AddressingMode::Absolute_X),
+        OpCode::new(0x5b, "*SRE", 3, 7, AddressingMode::Absolute_Y),
+        OpCode::new(0x43, "*SRE", 2, 8, AddressingMode::Indirect_X),
+        OpCode::new(0x53, "*SRE", 2, 8, AddressingMode::Indirect_Y),
+
+        // The official NOP ($EA) and six unofficial NOPs do nothing.
+        OpCode::new(0x80, "*NOP", 2,2, AddressingMode::Immediate),
+        OpCode::new(0x82, "*NOP", 2,2, AddressingMode::Immediate),
+        OpCode::new(0x89, "*NOP", 2,2, AddressingMode::Immediate),
+        OpCode::new(0xc2, "*NOP", 2,2, AddressingMode::Immediate),
+        OpCode::new(0xe2, "*NOP", 2,2, AddressingMode::Immediate),
+
+        // Sets X to {(A AND X) - #value without borrow}, and updates NZC.
+        // One might use TXA AXS #-element_size to iterate through an array of structures or other elements larger than a byte,
+        // where the 6502 architecture usually prefers a structure of arrays.
+        // For example, TXA AXS #$FC could step to the next OAM entry or to the next APU channel,
+        // saving one byte and four cycles over four INXs. Also called SBX.
+        OpCode::new(0xCB, "*AXS", 2,2, AddressingMode::Immediate),
+
+        // Similar to AND #i then ROR A, except sets the flags differently.
+        // N and Z are normal, but C is bit 6 and V is bit 6 xor bit 5.
+        // A fast way to perform signed division by 4 is: CMP #$80; ARR #$FF; ROR. This can be extended to larger powers of two.
+        OpCode::new(0x6B, "*ARR", 2,2, AddressingMode::Immediate),
+
+        // $69 and $E9 are official; $EB is not. These three opcodes are nearly equivalent, except that $E9 and $EB add 255-i instead of i.
+        OpCode::new(0xeb, "*SBC", 2,2, AddressingMode::Immediate),
+
+        // Does AND #i, setting N and Z flags based on the result. Then it copies N (bit 7) to C.
+        // ANC #$FF could be useful for sign-extending, much like CMP #$80. ANC #$00 acts like LDA #$00 followed by CLC.
+        OpCode::new(0x0b, "*ANC", 2,2, AddressingMode::Immediate),
+        OpCode::new(0x2b, "*ANC", 2,2, AddressingMode::Immediate),
+
+        // Equivalent to AND #i then LSR A. Some sources call this "ASR";
+        // we do not follow this out of confusion with the mnemonic for a pseudoinstruction that combines CMP #$80 (or ANC #$FF) then ROR.
+        // Note that ALR #$FE acts like LSR followed by CLC.
+        // Unfortunately, this instruction doesn't work reliably on at least the UM6561AF-2 famiclone chip, and possibly others.
+        OpCode::new(0x4b, "*ALR", 2,2, AddressingMode::Immediate),
+
+        OpCode::new(0x04, "*NOP", 2,3, AddressingMode::ZeroPage),
+        OpCode::new(0x44, "*NOP", 2,3, AddressingMode::ZeroPage),
+        OpCode::new(0x64, "*NOP", 2,3, AddressingMode::ZeroPage),
+        OpCode::new(0x14, "*NOP", 2, 4, AddressingMode::ZeroPage_X),
+        OpCode::new(0x34, "*NOP", 2, 4, AddressingMode::ZeroPage_X),
+        OpCode::new(0x54, "*NOP", 2, 4, AddressingMode::ZeroPage_X),
+        OpCode::new(0x74, "*NOP", 2, 4, AddressingMode::ZeroPage_X),
+        OpCode::new(0xd4, "*NOP", 2, 4, AddressingMode::ZeroPage_X),
+        OpCode::new(0xf4, "*NOP", 2, 4, AddressingMode::ZeroPage_X),
+        OpCode::new(0x0c, "*NOP", 3, 4, AddressingMode::Absolute),
+        OpCode::new(0x1c, "*NOP", 3, 4 /*or 5*/, AddressingMode::Absolute_X),
+        OpCode::new(0x3c, "*NOP", 3, 4 /*or 5*/, AddressingMode::Absolute_X),
+        OpCode::new(0x5c, "*NOP", 3, 4 /*or 5*/, AddressingMode::Absolute_X),
+        OpCode::new(0x7c, "*NOP", 3, 4 /*or 5*/, AddressingMode::Absolute_X),
+        OpCode::new(0xdc, "*NOP", 3, 4 /* or 5*/, AddressingMode::Absolute_X),
+        OpCode::new(0xfc, "*NOP", 3, 4 /* or 5*/, AddressingMode::Absolute_X),
+
+        // Equivalent to ROR value then ADC value, except supporting more addressing modes.
+        // Essentially this computes A + value / 2, where value is 9-bit and the division is rounded up.
+        OpCode::new(0x67, "*RRA", 2, 5, AddressingMode::ZeroPage),
+        OpCode::new(0x77, "*RRA", 2, 6, AddressingMode::ZeroPage_X),
+        OpCode::new(0x6f, "*RRA", 3, 6, AddressingMode::Absolute),
+        OpCode::new(0x7f, "*RRA", 3, 7, AddressingMode::Absolute_X),
+        OpCode::new(0x7b, "*RRA", 3, 7, AddressingMode::Absolute_Y),
+        OpCode::new(0x63, "*RRA", 2, 8, AddressingMode::Indirect_X),
+        OpCode::new(0x73, "*RRA", 2, 8, AddressingMode::Indirect_Y),
+
+        OpCode::new(0xe7, "*ISB", 2,5, AddressingMode::ZeroPage),
+        OpCode::new(0xf7, "*ISB", 2,6, AddressingMode::ZeroPage_X),
+        OpCode::new(0xef, "*ISB", 3,6, AddressingMode::Absolute),
+        OpCode::new(0xff, "*ISB", 3,7, AddressingMode::Absolute_X),
+        OpCode::new(0xfb, "*ISB", 3,7, AddressingMode::Absolute_Y),
+        OpCode::new(0xe3, "*ISB", 2,8, AddressingMode::Indirect_X),
+        OpCode::new(0xf3, "*ISB", 2,8, AddressingMode::Indirect_Y),
+
+        OpCode::new(0x02, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0x12, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0x22, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0x32, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0x42, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0x52, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0x62, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0x72, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0x92, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0xb2, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0xd2, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0xf2, "*NOP", 1,2, AddressingMode::NoneAddressing),
+
+        OpCode::new(0x1a, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0x3a, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0x5a, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0x7a, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0xda, "*NOP", 1,2, AddressingMode::NoneAddressing),
+        OpCode::new(0xfa, "*NOP", 1,2, AddressingMode::NoneAddressing),
+
+        OpCode::new(0xab, "*LXA", 2, 3, AddressingMode::Immediate),
+        // https://www.masswerk.at/nowgobang/2021/6502-illegal-opcodes
+        OpCode::new(0x8b, "*XAA", 2, 3, AddressingMode::Immediate),
+        OpCode::new(0xbb, "*LAS", 3, 2, AddressingMode::Absolute_Y),
+        OpCode::new(0x9b, "*TAS", 3, 2, AddressingMode::Absolute_Y),
+        OpCode::new(0x93, "*AHX", 2, /* guess */ 8, AddressingMode::Indirect_Y),
+        OpCode::new(0x9f, "*AHX", 3, /* guess */ 4/* or 5*/, AddressingMode::Absolute_Y),
+        // An incorrectly-implemented version of STX a,Y. Unless interrupted by DMC DMA on the 4th clock (i.e. RDY goes low between fetching the high byte of the address and the dummy read),
+        // data written is ANDed with (high byte of literal address +1). In case there's a page crossing, the high byte of the computed address is ANDed with X regardless of what RDY does.
+        OpCode::new(0x9e, "*SHX", 3, /* guess */ 4/* or 5*/, AddressingMode::Absolute_Y),
+        // An incorrectly-implemented version of STY a,X. Exact same as SHX a, Y but swap X and Y.
+        OpCode::new(0x9c, "*SHY", 3, /* guess */ 4/* or 5*/, AddressingMode::Absolute_X),
+
+        // Shortcut for LDA value then TAX. Saves a byte and two cycles and allows use of the X register with the (d),Y addressing mode.
+        // Notice that the immediate is missing; the opcode that would have been LAX is affected by line noise on the data bus. MOS 6502: even the bugs have bugs.
+        OpCode::new(0xa7, "*LAX", 2, 3, AddressingMode::ZeroPage),
+        OpCode::new(0xb7, "*LAX", 2, 4, AddressingMode::ZeroPage_Y),
+        OpCode::new(0xaf, "*LAX", 3, 4, AddressingMode::Absolute),
+        OpCode::new(0xbf, "*LAX", 3, 4, AddressingMode::Absolute_Y),
+        OpCode::new(0xa3, "*LAX", 2, 6, AddressingMode::Indirect_X),
+        OpCode::new(0xb3, "*LAX", 2, 5, AddressingMode::Indirect_Y),
+
+        // Stores the bitwise AND of A and X. As with STA and STX, no flags are affected.
+        OpCode::new(0x87, "*SAX", 2, 3, AddressingMode::ZeroPage),
+        OpCode::new(0x97, "*SAX", 2, 4, AddressingMode::ZeroPage_Y),
+        OpCode::new(0x8f, "*SAX", 3, 4, AddressingMode::Absolute),
+        OpCode::new(0x83, "*SAX", 2, 6, AddressingMode::Indirect_X),
     ];
 
     pub static ref OPCODES_MAP: HashMap<u8, &'static OpCode> = {
