@@ -61,13 +61,13 @@ pub enum AddressingMode {
 }
 
 pub trait Mem {
-    fn mem_read(&self, addr: u16) -> u8;
+    fn mem_read(&mut self, addr: u16) -> u8;
 
     fn mem_write(&mut self, addr: u16, data: u8);
 
     // Assemble/disassemble a u16 in two bytes. The 6502 uses little-endian.
     // The low byte goes in the lowest address, the high byte in pos+1
-    fn mem_read_u16(&self, pos: u16) -> u16 {
+    fn mem_read_u16(&mut self, pos: u16) -> u16 {
         let lo = self.mem_read(pos) as u16;
         let hi = self.mem_read(pos + 1) as u16;
         (hi << 8) | lo
@@ -82,7 +82,7 @@ pub trait Mem {
 }
 
 impl Mem for CPU {
-    fn mem_read(&self, addr: u16) -> u8 {
+    fn mem_read(&mut self, addr: u16) -> u8 {
         self.bus.mem_read(addr)
     }
 
@@ -90,7 +90,7 @@ impl Mem for CPU {
         self.bus.mem_write(addr, data)
     }
 
-    fn mem_read_u16(&self, addr: u16) -> u16 {
+    fn mem_read_u16(&mut self, addr: u16) -> u16 {
         self.bus.mem_read_u16(addr)
     }
 
@@ -112,7 +112,7 @@ impl CPU {
         }
     }
 
-    pub fn get_absolute_address(&self, mode: &AddressingMode, addr: u16) -> u16 {
+    pub fn get_absolute_address(&mut self, mode: &AddressingMode, addr: u16) -> u16 {
         match mode {
             AddressingMode::ZeroPage => self.mem_read(addr) as u16,
 
@@ -159,7 +159,7 @@ impl CPU {
         }
     }
 
-    fn get_operand_address(&self, mode: &AddressingMode) -> u16 {
+    fn get_operand_address(&mut self, mode: &AddressingMode) -> u16 {
         match mode {
             AddressingMode::Immediate => self.program_counter,
 
@@ -275,7 +275,6 @@ impl CPU {
     }
 
     fn clear_carry_flags(&mut self) {
-        // ME HE QUEDADO AQUÍ
         self.status.remove(CpuFlags::CARRY)
     }
 
