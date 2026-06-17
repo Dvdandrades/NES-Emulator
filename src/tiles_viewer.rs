@@ -34,8 +34,8 @@ fn show_title(chr_rom: &Vec<u8>, bank: usize, tile_n: usize) -> Frame {
 
         for x in (0..7).rev() {
             let value = (1 & upper) << 1 | (1 & lower);
-            upper = upper >> 1;
-            lower = lower >> 1;
+            upper >>= 1;
+            lower >>= 1;
             let rgb = match value {
                 0 => palette::SYSTEM_PALLETE[0x01],
                 1 => palette::SYSTEM_PALLETE[0x23],
@@ -70,8 +70,8 @@ fn show_tile_bank(chr_rom: &Vec<u8>, bank: usize) -> Frame {
 
             for x in (0..=7).rev() {
                 let value = (1 & upper) << 1 | (1 & lower);
-                upper = upper >> 1;
-                lower = lower >> 1;
+                upper >>= 1;
+                lower >>=  1;
                 let rgb = match value {
                     0 => palette::SYSTEM_PALLETE[0x01],
                     1 => palette::SYSTEM_PALLETE[0x23],
@@ -93,7 +93,7 @@ fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("Tile viewer", (256.0 * 3.0) as u32, (240.0 * 3.0) as u32)
+        .window("NES Emulator", (256.0 * 3.0) as u32, (240.0 * 3.0) as u32)
         .position_centered()
         .build()
         .unwrap();

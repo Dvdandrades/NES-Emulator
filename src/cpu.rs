@@ -1130,11 +1130,10 @@ impl<'a> CPU<'a> {
 mod test {
     use super::*;
     use crate::cartridge::test;
-    use crate::ppu::NesPPU;
 
     #[test]
     fn test_0xa9_lda_immediate_load_data() {
-        let bus = Bus::new(test::test_rom(vec![0xa9, 0x05, 0x00]), |ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom(vec![0xa9, 0x05, 0x00]), |_ppu, _joypad| {});
         let mut cpu = CPU::new(bus);
         cpu.run();
 
@@ -1145,7 +1144,7 @@ mod test {
 
     #[test]
     fn test_0xaa_tax_move_a_to_x() {
-        let bus = Bus::new(test::test_rom(vec![0xaa, 0x00]), |ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom(vec![0xaa, 0x00]), |_ppu, _joypad| {});
         let mut cpu = CPU::new(bus);
         cpu.register_a = 10;
         cpu.run();
@@ -1157,7 +1156,7 @@ mod test {
     fn test_5_ops_working_together() {
         let bus = Bus::new(
             test::test_rom(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]),
-            |ppu: &NesPPU| {},
+            |_ppu, _joypad| {},
         );
         let mut cpu = CPU::new(bus);
         cpu.run();
@@ -1167,7 +1166,7 @@ mod test {
 
     #[test]
     fn test_inx_overflow() {
-        let bus = Bus::new(test::test_rom(vec![0xe8, 0xe8, 0x00]), |ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom(vec![0xe8, 0xe8, 0x00]), |_ppu, _joypad| {});
         let mut cpu = CPU::new(bus);
         cpu.register_x = 0xff;
         cpu.run();
@@ -1177,7 +1176,7 @@ mod test {
 
     #[test]
     fn test_lda_from_memory() {
-        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]), |ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]), |_ppu, _joypad| {});
         let mut cpu = CPU::new(bus);
         cpu.mem_write(0x10, 0x55);
         cpu.run();
