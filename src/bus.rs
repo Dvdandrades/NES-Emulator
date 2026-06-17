@@ -33,19 +33,22 @@ use crate::ppu::PPU;
 
 const RAM: u16 = 0x0000;
 const RAM_MIRRORS_END: u16 = 0x1FFF;
-const PPU_REGISTERS: u16 = 0x2000;
 const PPU_REGISTERS_MIRRORS_END: u16 = 0x3FFF;
 
-pub struct Bus {
+pub struct Bus<'call> {
     cpu_vram: [u8; 2048], // 2 KB
     prg_rom: Vec<u8>,
     ppu: NesPPU,
 
     cycles: usize,
+    gameloop_callback: Box<dyn FnMut(&NesPPU) + 'call>,
 }
 
-impl Bus {
-    pub fn new(rom: Rom) -> Self {
+impl<'a> Bus<'a> {
+    pub fn new<'call, F>(rom: Rom, gameloop_callback: F) -> Bus<'call>
+    where
+        F: FnMut(&NesPPU) + 'call,
+    {
         let ppu = NesPPU::new(rom.chr_rom, rom.screen_mirroring);
 
         Bus {
@@ -53,6 +56,7 @@ impl Bus {
             prg_rom: rom.prg_rom,
             ppu,
             cycles: 0,
+            gameloop_callback: Box::from(gameloop_callback),
         }
     }
 
@@ -67,7 +71,10 @@ impl Bus {
 
     pub fn tick(&mut self, cycles: u8) {
         self.cycles += cycles as usize;
-        self.ppu.tick(cycles * 3);
+        let new_frame = self.ppu.tick(cycles * 3);
+        if new_frame {
+            (self.gameloop_callback)(&self.ppu);
+        }
     }
 
     pub fn poll_nmi_status(&mut self) -> Option<u8> {
@@ -75,20 +82,29 @@ impl Bus {
     }
 }
 
-impl Mem for Bus {
+impl Mem for Bus<'_> {
     fn mem_read(&mut self, addr: u16) -> u8 {
         match addr {
             RAM..=RAM_MIRRORS_END => {
                 let mirror_down_addr = addr & 0b00000111_11111111; // 11 bits
                 self.cpu_vram[mirror_down_addr as usize]
             }
-            0x2000 | 0x2001 | 0x2003 | 0x2005 | 0x2006 | 0x4014 => {
-                panic!("Attempt to read from write-only PPU address {:x}", addr);
-                // 0
-            }
+            0x2000 | 0x2001 | 0x2003 | 0x2005 | 0x2006 | 0x4014 => 0,
             0x2002 => self.ppu.read_status(),
             0x2004 => self.ppu.read_oam_data(),
             0x2007 => self.ppu.read_data(),
+
+            0x4000..=0x4015 => {
+                0 // APU
+            }
+
+            0x4016 => {
+                0 // Joypad 1
+            }
+
+            0x4017 => {
+                0 // Joypad 2
+            }
 
             0x2008..=PPU_REGISTERS_MIRRORS_END => {
                 let mirror_down_addr = addr & 0b00100000_00000111;
@@ -136,6 +152,28 @@ impl Mem for Bus {
                 self.ppu.write_to_data(data);
             }
 
+            0x4000..=0x4013 | 0x4015 => {
+                // APU
+            }
+
+            0x4016 => {
+                // Joypad 1;
+            }
+
+            0x4017 => {
+                // Joypad 2
+            }
+
+            // https://www.nesdev.org/wiki/PPU_programmer_reference#OAM
+            0x4014 => {
+                let mut buffer: [u8; 256] = [0; 256];
+                let hi: u16 = (data as u16) << 8;
+                for i in 0..256u16 {
+                    buffer[i as usize] = self.mem_read(hi + 1);
+                }
+                self.ppu.write_oam_dma(&buffer);
+            }
+
             0x2008..=PPU_REGISTERS_MIRRORS_END => {
                 let mirror_down_addr = addr & 0b00100000_00000111;
                 self.mem_write(mirror_down_addr, data);
@@ -159,7 +197,7 @@ mod test {
 
     #[test]
     fn test_mem_read_write_to_ram() {
-        let mut bus = Bus::new(test::test_rom(vec![]));
+        let mut bus = Bus::new(test::test_rom(vec![]), |ppu: &NesPPU| {});
         bus.mem_write(0x01, 0x55);
         assert_eq!(bus.mem_read(0x01), 0x55);
     }

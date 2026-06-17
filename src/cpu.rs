@@ -35,14 +35,14 @@ bitflags! {
 const STACK: u16 = 0x0100; // Stack location
 const STACK_RESET: u8 = 0xfd; // Stack pointer offset. Grows downwards.
 
-pub struct CPU {
+pub struct CPU<'a> {
     pub register_a: u8,       // Accumulator
     pub register_x: u8,       // Index X
     pub register_y: u8,       // Index Y
     pub status: CpuFlags,     // Flags
     pub program_counter: u16, // Points to the next instruction to read
     pub stack_pointer: u8,
-    pub bus: Bus,
+    pub bus: Bus<'a>,
 }
 
 #[derive(Debug)]
@@ -81,7 +81,7 @@ pub trait Mem {
     }
 }
 
-impl Mem for CPU {
+impl Mem for CPU<'_> {
     fn mem_read(&mut self, addr: u16) -> u8 {
         self.bus.mem_read(addr)
     }
@@ -124,8 +124,8 @@ mod interrupt {
     };
 }
 
-impl CPU {
-    pub fn new(bus: Bus) -> Self {
+impl<'a> CPU<'a> {
+    pub fn new<'b>(bus: Bus<'b>) -> CPU<'b> {
         CPU {
             register_a: 0,
             register_x: 0,
@@ -625,8 +625,14 @@ impl CPU {
     fn interrupt(&mut self, interrupt: interrupt::Interrupt) {
         self.stack_push_u16(self.program_counter);
         let mut flag = self.status;
-        flag.set(CpuFlags::BREAK, interrupt.b_flag_mask & 0b010000 == 1);
-        flag.set(CpuFlags::BREAK2, interrupt.b_flag_mask & 0b100000 == 1);
+        flag.set(
+            CpuFlags::BREAK,
+            (interrupt.b_flag_mask & 0b010000) == 0b010000,
+        );
+        flag.set(
+            CpuFlags::BREAK2,
+            (interrupt.b_flag_mask & 0b100000) == 0b100000,
+        );
 
         self.stack_push(flag.bits());
         self.status.insert(CpuFlags::INTERRUPT_DISABLE);
@@ -1124,10 +1130,11 @@ impl CPU {
 mod test {
     use super::*;
     use crate::cartridge::test;
+    use crate::ppu::NesPPU;
 
     #[test]
     fn test_0xa9_lda_immediate_load_data() {
-        let bus = Bus::new(test::test_rom(vec![0xa9, 0x05, 0x00]));
+        let bus = Bus::new(test::test_rom(vec![0xa9, 0x05, 0x00]), |ppu: &NesPPU| {});
         let mut cpu = CPU::new(bus);
         cpu.run();
 
@@ -1138,7 +1145,7 @@ mod test {
 
     #[test]
     fn test_0xaa_tax_move_a_to_x() {
-        let bus = Bus::new(test::test_rom(vec![0xaa, 0x00]));
+        let bus = Bus::new(test::test_rom(vec![0xaa, 0x00]), |ppu: &NesPPU| {});
         let mut cpu = CPU::new(bus);
         cpu.register_a = 10;
         cpu.run();
@@ -1148,7 +1155,10 @@ mod test {
 
     #[test]
     fn test_5_ops_working_together() {
-        let bus = Bus::new(test::test_rom(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]));
+        let bus = Bus::new(
+            test::test_rom(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]),
+            |ppu: &NesPPU| {},
+        );
         let mut cpu = CPU::new(bus);
         cpu.run();
 
@@ -1157,7 +1167,7 @@ mod test {
 
     #[test]
     fn test_inx_overflow() {
-        let bus = Bus::new(test::test_rom(vec![0xe8, 0xe8, 0x00]));
+        let bus = Bus::new(test::test_rom(vec![0xe8, 0xe8, 0x00]), |ppu: &NesPPU| {});
         let mut cpu = CPU::new(bus);
         cpu.register_x = 0xff;
         cpu.run();
@@ -1167,7 +1177,7 @@ mod test {
 
     #[test]
     fn test_lda_from_memory() {
-        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]));
+        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]), |ppu: &NesPPU| {});
         let mut cpu = CPU::new(bus);
         cpu.mem_write(0x10, 0x55);
         cpu.run();

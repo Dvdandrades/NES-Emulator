@@ -118,7 +118,7 @@ impl NesPPU {
         false
     }
 
-    fn poll_nmi_interrupt(&mut self) -> Option<u8> {
+    fn _poll_nmi_interrupt(&mut self) -> Option<u8> {
         self.nmi_interrupt.take()
     }
 }
