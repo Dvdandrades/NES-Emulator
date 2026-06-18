@@ -3,10 +3,19 @@ use crate::cpu::CPU;
 use crate::cpu::Mem;
 use crate::opcodes;
 
+use lazy_static::lazy_static;
 use std::collections::HashMap;
+
+lazy_static! {
+    pub static ref NON_READABLE_ADDR: Vec<u16> = vec!(
+        0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x4016, 0x4017
+    );
+}
 
 pub fn trace(cpu: &mut CPU) -> String {
     let opcodes: &HashMap<u8, &'static opcodes::OpCode> = &opcodes::OPCODES_MAP;
+
+    let non_readable_addr = &*NON_READABLE_ADDR;
 
     let code = cpu.mem_read(cpu.program_counter);
     let ops = opcodes.get(&code).unwrap();
@@ -19,7 +28,12 @@ pub fn trace(cpu: &mut CPU) -> String {
         AddressingMode::Immediate | AddressingMode::NoneAddressing => (0, 0),
         _ => {
             let (addr, _) = cpu.get_absolute_address(&ops.mode, begin + 1);
-            (addr, cpu.mem_read(addr))
+
+            if !non_readable_addr.contains(&addr) {
+                (addr, cpu.mem_read(addr))
+            } else {
+                (addr, 0)
+            }
         }
     };
 

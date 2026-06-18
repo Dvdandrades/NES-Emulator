@@ -26,8 +26,8 @@ fn main() {
     let window = video_subsystem
         .window(
             "NES Emulator",
-            (256.0 * 3.0/* scale factor */) as u32,
-            (240.0 * 3.0/* scale factor */) as u32,
+            (256.0 * 4.0/* scale factor */) as u32,
+            (240.0 * 2.0/* scale factor */) as u32,
         )
         .position_centered()
         .build()
@@ -35,15 +35,15 @@ fn main() {
 
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
-    canvas.set_scale(3.0, 3.0).unwrap();
+    canvas.set_scale(2.0, 2.0).unwrap();
 
     let creator = canvas.texture_creator();
     let mut texture = creator
-        .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
+        .create_texture_target(PixelFormatEnum::RGB24, 256 * 2, 240)
         .unwrap();
 
     // Load the game
-    let bytes: Vec<u8> = std::fs::read("pacman.nes").unwrap();
+    let bytes: Vec<u8> = std::fs::read("super.nes").unwrap();
     let rom = Rom::new(&bytes).unwrap();
     let mut frame = Frame::new();
 
@@ -60,7 +60,7 @@ fn main() {
     // Run the game cycle
     let bus = Bus::new(rom, move |ppu: &NesPPU, joypad: &mut joypad::Joypad| {
         render::render(ppu, &mut frame);
-        texture.update(None, &frame.data, 256 * 3).unwrap();
+        texture.update(None, &frame.data, 256 * 2 * 3).unwrap();
 
         canvas.copy(&texture, None, None).unwrap();
 

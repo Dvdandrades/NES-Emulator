@@ -107,6 +107,7 @@ mod interrupt {
     #[derive(PartialEq, Eq)]
     pub enum InterruptType {
         Nmi,
+        Brk,
     }
 
     #[derive(PartialEq, Eq)]
@@ -121,6 +122,12 @@ mod interrupt {
         vector_addr: 0xFFFA,
         b_flag_mask: 0b00100000,
         cpu_cycles: 2,
+    };
+    pub(super) const BRK: Interrupt = Interrupt {
+        itype: InterruptType::Brk,
+        vector_addr: 0xfffe,
+        b_flag_mask: 0b00110000,
+        cpu_cycles: 1,
     };
 }
 
