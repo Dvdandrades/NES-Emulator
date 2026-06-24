@@ -172,7 +172,7 @@ impl Mem for Bus<'_> {
                 let mut buffer: [u8; 256] = [0; 256];
                 let hi: u16 = (data as u16) << 8;
                 for i in 0..256u16 {
-                    buffer[i as usize] = self.mem_read(hi + 1);
+                    buffer[i as usize] = self.mem_read(hi + i);
                 }
                 self.ppu.write_oam_dma(&buffer);
             }

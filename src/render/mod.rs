@@ -78,7 +78,7 @@ fn render_name_table(
             let mut upper = tile[y];
             let mut lower = tile[y + 8];
 
-            for x in (0..7).rev() {
+            for x in (0..=7).rev() {
                 let value = (1 & lower) << 1 | (1 & upper);
                 upper >>= 1;
                 lower >>= 1;

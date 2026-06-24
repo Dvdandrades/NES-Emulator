@@ -39,7 +39,7 @@ fn main() {
 
     let creator = canvas.texture_creator();
     let mut texture = creator
-        .create_texture_target(PixelFormatEnum::RGB24, 256 * 2, 240)
+        .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
         .unwrap();
 
     // Load the game
@@ -60,7 +60,7 @@ fn main() {
     // Run the game cycle
     let bus = Bus::new(rom, move |ppu: &NesPPU, joypad: &mut joypad::Joypad| {
         render::render(ppu, &mut frame);
-        texture.update(None, &frame.data, 256 * 2 * 3).unwrap();
+        texture.update(None, &frame.data, 256 * 3).unwrap();
 
         canvas.copy(&texture, None, None).unwrap();
 
